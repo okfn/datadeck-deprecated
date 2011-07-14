@@ -30,7 +30,7 @@ import webkit
 from utils import GConfStore
 
 # FIXME: This path needs to be assigned at installing time
-DATADECK_INDEX = 'data/ckanjs/app/index.html'
+DATADECK_INDEX = 'ckanjs/index.html'
 DATADECK_UI = 'datadeck.ui'
 GCONF_KEY = '/apps/datadeck'
 
