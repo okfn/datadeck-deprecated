@@ -2,3 +2,4 @@ configlocal.js
 sandbox
 *.pyc
 *~
+*.swp
