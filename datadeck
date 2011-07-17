@@ -28,16 +28,27 @@ import gobject
 import webkit
 
 from utils import GConfStore
+from xdg.BaseDirectory import xdg_data_home
+
+from manager import DataPackageManager
 
 # FIXME: This path needs to be assigned at installing time
 DATADECK_INDEX = 'ckanjs/index.html'
 DATADECK_UI = 'datadeck.ui'
 GCONF_KEY = '/apps/datadeck'
+LOCAL_PACKAGES_DIR = os.path.join(xdg_data_home, 'datadeck')
+
+ICON_COL, NAME_COL, TYPE_COL = range(3)
 
 # Load icons
 theme = gtk.icon_theme_get_default()
-remote_hub_icon = theme.load_icon('package', 24, 0)
-local_package_icon = theme.load_icon('go-home', 24, 0)
+remote_hub_icon = theme.load_icon('network-server', 24, 0)
+package_icon = theme.load_icon('package', 24, 0)
+home_icon = theme.load_icon('go-home', 24, 0)
+
+if not os.path.exists(LOCAL_PACKAGES_DIR):
+    os.mkdir(LOCAL_PACKAGES_DIR)
+package_manager = DataPackageManager(LOCAL_PACKAGES_DIR)
 
 class DataDeckGUI(GConfStore):
 
@@ -66,7 +77,7 @@ class DataDeckGUI(GConfStore):
         self.search_entry = self.builder.get_object('search_entry')
         self.search_entry.set_property('primary-icon-sensitive',False)
         self.search_entry.set_property('secondary-icon-sensitive',False)
-        
+
         # Web view
         self.web_view = webkit.WebView()
         self.webview_scroll.add(self.web_view)
@@ -98,16 +109,39 @@ class DataDeckGUI(GConfStore):
             self.options['window_height'])
 
     def populate(self):
-        remote = self.datahub_treestore.append(None, [remote_hub_icon, 'DataHubs'])
-        local = self.datahub_treestore.append(None, [local_package_icon, 'Local Packages'])
+        remote = self.datahub_treestore.append(None, [remote_hub_icon, 'DataHubs',
+            'datahubroot'])
+        local = self.datahub_treestore.append(None, [home_icon, 'Local Packages',
+            'localpkgroot'])
 
-        self.datahub_treestore.append(remote, [remote_hub_icon, 'CKAN DataHub'])
-        self.datahub_treestore.append(remote, [remote_hub_icon, 'data.gov.uk'])
-        self.datahub_treestore.append(remote, [remote_hub_icon, 'data.gov'])
-        
-        index_abs_path = os.path.join(os.path.abspath(sys.path[0]), 
+        self.datahub_treestore.append(remote, [remote_hub_icon, 'CKAN DataHub',
+            'datahub'])
+        self.datahub_treestore.append(remote, [remote_hub_icon, 'data.gov.uk', 
+            'datahub'])
+        self.datahub_treestore.append(remote, [remote_hub_icon, 'data.gov', 
+            'datahub'])
+
+        package_manager.scan()
+        for package_id, package in package_manager.items():
+            self.datahub_treestore.append(local, [package_icon, 
+                package.name, 'localpkg'])
+
+        self.index_abs_path = os.path.join(os.path.abspath(sys.path[0]), 
                 DATADECK_INDEX)
-        self.web_view.open('file://%s' % index_abs_path)
+        self.web_view.open('file://%s' % self.index_abs_path)
+
+    def datahub_treeview_cursor_changed_cb(self, treeview):
+        selection = treeview.get_selection()
+        model, selected = selection.get_selected()
+
+        if selected:
+            row = model[selected]
+            if row[TYPE_COL] == 'localpkg':
+                data_package = package_manager[row[NAME_COL]]
+
+                dataset_view_path = self.index_abs_path + '#dataset/view/' + \
+                    data_package.id
+                self.web_view.open('file://%s' % dataset_view_path)
 
     def search_entry_activate_cb(self, entry):
         self.web_view.execute_script("window.location.href = \

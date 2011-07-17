@@ -11,7 +11,9 @@ Further information:
 
 Dependencies:
 ============
-* Python >= 2.5
+* python >= 2.5
 * python-gconf
 * python-gobject
 * python-webkit
+* python-xdg
+* datapkg >= 0.8
